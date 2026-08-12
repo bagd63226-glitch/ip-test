@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>A</title>
+<h1>A 링크</h1><p id="ip">확인 중...</p><a id="go" href="#" style="pointer-events:none">B 링크로 이동</a>
+<script>
+fetch('https://api.ipify.org?format=json')
+.then(r=>r.json())
+.then(x=>{document.getElementById('ip').textContent=x.ip; document.getElementById('go').href='b.html?ip='+encodeURIComponent(x.ip); document.getElementById('go').style.pointerEvents='auto';})
+.catch(()=>document.getElementById('ip').textContent='IP 확인 실패');
+</script>
