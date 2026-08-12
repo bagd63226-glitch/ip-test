@@ -1,8 +1,172 @@
-<!doctype html><meta charset="utf-8"><title>A</title>
-<h1>A 링크</h1><p id="ip">확인 중...</p><a id="go" href="#" style="pointer-events:none">B 링크로 이동</a>
+<!doctype html>
+<meta charset="utf-8">
+<title>A - IP 전송</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    min-height: 100vh;
+  }
+  .container {
+    background: rgba(255,255,255,0.1);
+    padding: 30px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .info-box {
+    background: rgba(255,255,255,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .info-box label {
+    display: block;
+    font-size: 12px;
+    opacity: 0.8;
+    margin-bottom: 5px;
+  }
+  .info-box #ip {
+    font-size: 24px;
+    font-weight: bold;
+  }
+  input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 5px;
+    box-sizing: border-box;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  button:hover {
+    background: #ff5252;
+  }
+  button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  .status {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 14px;
+  }
+  .status.connecting {
+    background: #ffa502;
+  }
+  .status.connected {
+    background: #51cf66;
+  }
+  .status.error {
+    background: #ff6b6b;
+  }
+</style>
+
+<div class="container">
+  <h1>📱 A - IP 전송</h1>
+  
+  <div class="info-box">
+    <label>당신의 IP 주소</label>
+    <div id="ip">확인 중...</div>
+  </div>
+
+  <div>
+    <label>친구의 방 번호 입력:</label>
+    <input type="text" id="roomId" placeholder="예: room123" value="">
+    
+    <button id="sendBtn" onclick="sendIP()">IP 전송하기</button>
+    
+    <div id="status" class="status connecting">연결 중...</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
 <script>
+// Firebase 설정
+const firebaseConfig = {
+  apiKey: "AIzaSyDe_xL0_R5_q0_4_0_0_0_0_0_0_0_0_0_0",
+  authDomain: "ip-tracker-a1b2c.firebaseapp.com",
+  databaseURL: "https://ip-tracker-a1b2c-default-rtdb.firebaseio.com",
+  projectId: "ip-tracker-a1b2c",
+  storageBucket: "ip-tracker-a1b2c.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef123456"
+};
+
+// Firebase 초기화
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let userIP = '';
+
+// IP 조회
 fetch('https://api.ipify.org?format=json')
-.then(r=>r.json())
-.then(x=>{document.getElementById('ip').textContent=x.ip; document.getElementById('go').href='b.html?ip='+encodeURIComponent(x.ip); document.getElementById('go').style.pointerEvents='auto';})
-.catch(()=>document.getElementById('ip').textContent='IP 확인 실패');
+  .then(r => r.json())
+  .then(x => {
+    userIP = x.ip;
+    document.getElementById('ip').textContent = userIP;
+    updateStatus('connected', '✓ 준비 완료');
+  })
+  .catch(() => {
+    document.getElementById('ip').textContent = '실패';
+    updateStatus('error', '✗ IP 조회 실패');
+  });
+
+function updateStatus(status, message) {
+  const statusEl = document.getElementById('status');
+  statusEl.className = 'status ' + status;
+  statusEl.textContent = message;
+}
+
+function sendIP() {
+  const roomId = document.getElementById('roomId').value.trim();
+  
+  if (!roomId) {
+    updateStatus('error', '✗ 방 번호를 입력하세요');
+    return;
+  }
+  
+  if (!userIP) {
+    updateStatus('error', '✗ IP를 조회할 수 없습니다');
+    return;
+  }
+
+  const timestamp = new Date().toLocaleString('ko-KR');
+  
+  db.ref('rooms/' + roomId + '/visitors').push({
+    ip: userIP,
+    timestamp: timestamp,
+    sent_at: firebase.database.ServerValue.TIMESTAMP
+  }).then(() => {
+    updateStatus('connected', '✓ IP 전송 완료! (' + userIP + ')');
+    document.getElementById('sendBtn').disabled = true;
+    setTimeout(() => {
+      document.getElementById('sendBtn').disabled = false;
+    }, 2000);
+  }).catch(err => {
+    updateStatus('error', '✗ 전송 실패: ' + err.message);
+  });
+}
 </script>

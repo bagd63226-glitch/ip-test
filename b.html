@@ -1,3 +1,201 @@
-<!doctype html><meta charset="utf-8"><title>B</title>
-<h1>B 링크</h1><p>전달된 값:</p><h2 id="ip"></h2>
-<script>document.getElementById('ip').textContent=new URLSearchParams(location.search).get('ip')||'없음';</script>
+<!doctype html>
+<meta charset="utf-8">
+<title>B - IP 목록 받기</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    min-height: 100vh;
+  }
+  .container {
+    background: rgba(255,255,255,0.1);
+    padding: 30px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .setup-box {
+    background: rgba(255,255,255,0.2);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 5px;
+    box-sizing: border-box;
+    color: black;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #51cf66;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  button:hover {
+    background: #40c057;
+  }
+  .status {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 14px;
+  }
+  .status.listening {
+    background: #51cf66;
+  }
+  .status.waiting {
+    background: #ffa502;
+  }
+  .status.error {
+    background: #ff6b6b;
+  }
+  .visitors-list {
+    margin-top: 30px;
+  }
+  .visitor-item {
+    background: rgba(255,255,255,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .visitor-ip {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+  }
+  .visitor-time {
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  .empty-message {
+    text-align: center;
+    padding: 20px;
+    opacity: 0.7;
+  }
+  .copy-btn {
+    width: auto;
+    padding: 5px 10px;
+    background: #4dabf7;
+    font-size: 12px;
+    margin-left: 10px;
+  }
+  .copy-btn:hover {
+    background: #339af0;
+  }
+</style>
+
+<div class="container">
+  <h1>📊 B - IP 목록 받기</h1>
+  
+  <div class="setup-box">
+    <label>당신의 방 번호 설정:</label>
+    <input type="text" id="roomId" placeholder="예: room123" value="">
+    
+    <button onclick="setupRoom()">방 열기</button>
+    
+    <div id="status" class="status waiting">방 번호를 입력하고 '방 열기'를 눌러주세요</div>
+  </div>
+
+  <div class="visitors-list">
+    <h2>👥 접속한 사람들</h2>
+    <div id="visitorsList" class="empty-message">아무도 접속하지 않았습니다</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
+<script>
+// Firebase 설정 (a.html과 동일해야 함)
+const firebaseConfig = {
+  apiKey: "AIzaSyDe_xL0_R5_q0_4_0_0_0_0_0_0_0_0_0_0",
+  authDomain: "ip-tracker-a1b2c.firebaseapp.com",
+  databaseURL: "https://ip-tracker-a1b2c-default-rtdb.firebaseio.com",
+  projectId: "ip-tracker-a1b2c",
+  storageBucket: "ip-tracker-a1b2c.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef123456"
+};
+
+// Firebase 초기화
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentRoom = null;
+
+function setupRoom() {
+  const roomId = document.getElementById('roomId').value.trim();
+  
+  if (!roomId) {
+    updateStatus('error', '✗ 방 번호를 입력하세요');
+    return;
+  }
+
+  currentRoom = roomId;
+  updateStatus('listening', '✓ "' + roomId + '" 방에서 대기 중...');
+  
+  // 실시간 데이터 감시
+  db.ref('rooms/' + roomId + '/visitors').on('value', (snapshot) => {
+    const visitors = snapshot.val();
+    displayVisitors(visitors);
+  });
+}
+
+function displayVisitors(visitors) {
+  const list = document.getElementById('visitorsList');
+  
+  if (!visitors || Object.keys(visitors).length === 0) {
+    list.innerHTML = '<div class="empty-message">아직 아무도 접속하지 않았습니다</div>';
+    return;
+  }
+
+  let html = '';
+  const visitorArray = Object.values(visitors).sort((a, b) => (b.sent_at || 0) - (a.sent_at || 0));
+  
+  visitorArray.forEach((visitor, index) => {
+    html += `
+      <div class="visitor-item">
+        <div>
+          <div class="visitor-ip">#${index + 1} ${visitor.ip}</div>
+          <div class="visitor-time">${visitor.timestamp}</div>
+        </div>
+        <button class="copy-btn" onclick="copyIP('${visitor.ip}')">복사</button>
+      </div>
+    `;
+  });
+  
+  list.innerHTML = html;
+}
+
+function copyIP(ip) {
+  navigator.clipboard.writeText(ip).then(() => {
+    alert('IP가 복사되었습니다: ' + ip);
+  });
+}
+
+function updateStatus(status, message) {
+  const statusEl = document.getElementById('status');
+  statusEl.className = 'status ' + status;
+  statusEl.textContent = message;
+}
+</script>
